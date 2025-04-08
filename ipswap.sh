@@ -35,6 +35,7 @@ if [ "$EUID" -ne 0 ]; then
 	exit
 fi
 
+#Forcefully kills firefox, check README.md for more information
 if pgrep firefox > /dev/null; then
         echo "Killing firefox..."
         pkill -9 firefox
@@ -42,11 +43,13 @@ else
         echo "That fox is already dead..."
 fi
 
+#Installs Dependancies
 echo "Checking if tor and tornet are installed..."
 apt install tor
 pip install tornet --break-system-packages
 echo "Installed all dependancies"
 
+#Checks if required services are running
 echo "Checking tor status"
 torService="tor"
 if ! systemctl is-active $torService; then
@@ -57,52 +60,53 @@ else
 	echo "$torService is running!"
 fi
 
-#Checking the user path as well as calling the findProfile method to find the active firefox directory
+#Calling the findProfile method to find the active firefox directory
 echo "Finding profile.ini..."
 usrPath=$(findProfile)
-echo $usrPath
 
-if [ ! -f "user.js" ]; then
+#Checks if user.js got moved to ideal path
+if [ -f "user.js" ]; then
 	mv ./user.js $usrPath
 else
-	echo "File is already in $usrPath"
+	echo "user.js is already in $usrPath"
 fi
 
-echo "$usrPath/user.js"
+#Determines proxy and changes to custom proxy when needed
 fLine=$(head -n 1 "$usrPath/user.js")
-
 if [["$fLine" == *'user_pref("network.proxy.type", 1);'* ]]; then
 	echo "Type 1!"
 elif [["$fLine" == *'user_pref("network.proxy.type", 4);' * ]]; then
 	echo "Type 4, changing user.js to type 1..."
-	cat > $usrPath <<EOF
+	cat >> $usrPath <<EOF
 	user_pref("network.proxy.type", 1);
 	user_pref("network.proxy.socks", "127.0.0.1");
 	user_pref("network.proxy.socks_port", 9050);
 	user_pref("network.proxy.socks_version", 5);
 	user_pref("network.proxy.socks_remote_dns", true);
-	EOF
+EOF
 else
 	echo "Proxy is at an unknown type, defaulting to 1..."
-	cat > $usrPath <<EOF
-        user_pref("network.proxy.type", 1);
-        user_pref("network.proxy.socks", "127.0.0.1");
-        user_pref("network.proxy.socks_port", 9050);
-        user_pref("network.proxy.socks_version", 5);
-        user_pref("network.proxy.socks_remote_dns", true);
-        EOF
+	cat >> $usrPath <<EOF
+	user_pref("network.proxy.type", 1);
+	user_pref("network.proxy.socks", "127.0.0.1");
+	user_pref("network.proxy.socks_port", 9050);
+	user_pref("network.proxy.socks_version", 5);
+	user_pref("network.proxy.socks_remote_dns", true);
+EOF
 fi
 
+#Launches tornet and begins IP shuffling
 echo "Launching tornet"
-tornet --interval 10 --count 0 &
+tornet --interval 3 --count 0 &
 TORNET_PID=$!
 
 echo "tornet started with PID: $TORNET_PID"
-echo "You can stop it later with: kill $TORNET_PID if the process doesn't stop immediately"
-firefox
+echo "You can stop it later with: pkill -9 $TORNET_PID if the process doesn't stop immediately"
 
-cat > $usrPath <<EOF
+#sets proxy back to auto after closing
+cat >> $usrPath <<EOF
 user_pref("network.proxy.type", 4);
 EOF
 
-read -p "Press **Enter** to exit the script"
+#su $USER -c "firefox"
+read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
