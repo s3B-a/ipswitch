@@ -16,6 +16,7 @@ IP SWITCHER UTILIZING TORNET
 ### WARNING
 - When running the program, if you terminate using ```Ctrl+C```, **YOUR SYSTEM WILL CRASH**
 - Changing the interval from 5 may slow your system down, anything lower than 3 and Tornet won't be able to catch up (this is due connecting too quickly to networks all around the globe)
+
 ### THIS SCRIPT IS A WORK IN PROGRESS
 - Not all browsers are supported at the time of editing the only browser this functions with is firefox.
 - More browsers will obtain this feature in the future
