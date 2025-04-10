@@ -1,7 +1,23 @@
 #!/bin/bash
 
+#Script created by s3B-a
+# ================
+# IP SWITCH v1.1.0
+# ================
+
+printAsciiLogo() {
+	echo -e "\e[36m +---------------------------------------------------------------+\e"
+	echo -e "\e[36m | ██╗██████╗     ███████╗██╗    ██╗██╗████████╗ ██████╗██╗  ██╗ |"
+ 	echo -e "\e[36m | ██║██╔══██╗    ██╔════╝██║    ██║██║╚══██╔══╝██╔════╝██║  ██║ |"
+	echo -e "\e[36m | ██║██████╔╝    ███████╗██║ █╗ ██║██║   ██║   ██║     ███████║ |"
+	echo -e "\e[36m | ██║██╔═══╝     ╚════██║██║███╗██║██║   ██║   ██║     ██╔══██║ |"
+	echo -e "\e[36m | ██║██║         ███████║╚███╔███╔╝██║   ██║   ╚██████╗██║  ██║ |"
+	echo -e "\e[36m | ╚═╝╚═╝         ╚══════╝ ╚══╝╚══╝ ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ |"
+	echo -e "\e[36m +----------------------------(v1.1.0)---------------------------+\e[0m "
+}
+
 #Finds the active firefox directory used by the user
-findProfile() {
+findFirefoxProfile() {
 	usrHome=$(eval echo "~$SUDO_USER")
 	pRoot="$usrHome/.mozilla/firefox"
 
@@ -31,6 +47,101 @@ killFirefox() {
 	fi
 }
 
+#Forcefully kills chromium, check README.md for more information
+killChromium() {
+	if pgrep chromium > /dev/null; then
+		echo "Killing Chromium..."
+		pkill -9 chromium
+	else
+		echo "Chromium lost it's chrome choom"
+	fi
+}
+
+#Launches Chromium
+launchChromium() {
+	#Proxy to set on launch of chromium via --proxy-server
+	proxy=$(echo "127.0.0.1:9050")
+
+	killChromium
+
+	launchTornet
+
+	echo "Launching chromium with proxy enabled..."
+	sudo -u "$SUDO_USER" chromium --proxy-server="socks5://$proxy" &
+
+	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+
+	killChromium
+}
+
+#Launches Firefox
+launchFirefox() {
+	killFirefox
+
+	#Calling the findProfile method to find the active firefox directory
+	echo "Finding active directory..."
+	usrPath=$(findFirefoxProfile)
+
+	#Checks if user.js got moved to ideal path
+	if [ -f "user.js" ]; then
+		mv ./user.js $usrPath
+	else
+		echo "user.js is already in $usrPath"
+	fi
+
+	#Determines proxy and changes to custom proxy when needed
+	fLine=$(head -n 1 "$usrPath/user.js")
+	if [["$fLine" == *'user_pref("network.proxy.type", 1);'* ]]; then
+		echo "Proxy is type 1!"
+	elif [["$fLine" == *'user_pref("network.proxy.type", 4);' * ]]; then
+		echo "Proxy is type 4, changing user.js to type 1..."
+		cat > "$usrPath/user.js" <<EOF
+user_pref("network.proxy.type", 1);
+user_pref("network.proxy.socks", "127.0.0.1");
+user_pref("network.proxy.socks_port", 9050);
+user_pref("network.proxy.socks_version", 5);
+user_pref("network.proxy.socks_remote_dns", true);
+EOF
+	else
+		echo "Proxy is at an unknown type, defaulting to 1..."
+		cat > "$usrPath/user.js" <<EOF
+user_pref("network.proxy.type", 1);
+user_pref("network.proxy.socks", "127.0.0.1");
+user_pref("network.proxy.socks_port", 9050);
+user_pref("network.proxy.socks_version", 5);
+user_pref("network.proxy.socks_remote_dns", true);
+EOF
+	fi
+
+	#Removing conflicting proxy settings
+	sed -i '/network\.proxy\./d' "$usrPath/prefs.js"
+
+	launchTornet
+
+	echo "Opening firefox as nonroot..."
+	sudo -u "$SUDO_USER" firefox &
+
+	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+
+	killFirefox
+
+	#Sets proxy back to auto after closing
+	cat > "$usrPath/user.js" <<EOF
+user_pref("network.proxy.type", 4);
+EOF
+	echo "Firefox set back to normal..."
+}
+
+#Launches Tornet and begins IP shuffling
+launchTornet() {
+	echo "Launching tornet"
+	tornet --interval 5 --count 0 &
+	TORNET_PID=$!
+
+	echo "tornet started with PID: $TORNET_PID"
+	echo "You can stop it later with: pkill -9 $TORNET_PID if the process doesn't stop immediately"
+}
+
 #Asks for root perms
 if [ "$EUID" -ne 0 ]; then
 	echo "Run as root"
@@ -38,10 +149,7 @@ if [ "$EUID" -ne 0 ]; then
 	exit
 fi
 
-killFirefox
-
-
-#Installs Dependancies
+Installs Dependancies
 echo "Checking if tor and tornet are installed..."
 apt install tor
 pip install tornet --break-system-packages
@@ -58,61 +166,21 @@ else
 	echo "$torService is running!"
 fi
 
-#Calling the findProfile method to find the active firefox directory
-echo "Finding active directory..."
-usrPath=$(findProfile)
+printAsciiLogo
 
-#Checks if user.js got moved to ideal path
-if [ -f "user.js" ]; then
-	mv ./user.js $usrPath
+#Determine browser
+echo "Enter your browser: "
+read -r usrBrowser
+
+usrBrowser=$(echo "$usrBrowser" | tr '[:upper:]' '[:lower:]')
+
+#If statement for all available browsers
+if [[ "$usrBrowser" == "chromium" ]]; then
+	echo "Selected chromium..."
+	launchChromium
+elif [[ "$usrBrowser" == "firefox" ]]; then
+	echo "Selected firefox..."
+	launchFirefox
 else
-	echo "user.js is already in $usrPath"
+	echo "no selected browser... quitting..."
 fi
-
-#Determines proxy and changes to custom proxy when needed
-fLine=$(head -n 1 "$usrPath/user.js")
-if [["$fLine" == *'user_pref("network.proxy.type", 1);'* ]]; then
-	echo "Proxy is type 1!"
-elif [["$fLine" == *'user_pref("network.proxy.type", 4);' * ]]; then
-	echo "Proxy is type 4, changing user.js to type 1..."
-	cat > "$usrPath/user.js" <<EOF
-user_pref("network.proxy.type", 1);
-user_pref("network.proxy.socks", "127.0.0.1");
-user_pref("network.proxy.socks_port", 9050);
-user_pref("network.proxy.socks_version", 5);
-user_pref("network.proxy.socks_remote_dns", true);
-EOF
-else
-	echo "Proxy is at an unknown type, defaulting to 1..."
-	cat > "$usrPath/user.js" <<EOF
-user_pref("network.proxy.type", 1);
-user_pref("network.proxy.socks", "127.0.0.1");
-user_pref("network.proxy.socks_port", 9050);
-user_pref("network.proxy.socks_version", 5);
-user_pref("network.proxy.socks_remote_dns", true);
-EOF
-fi
-
-#Removing conflicting proxy settings
-sed -i '/network\.proxy\./d' "$usrPath/prefs.js"
-
-#Launches tornet and begins IP shuffling
-echo "Launching tornet"
-tornet --interval 5 --count 0 &
-TORNET_PID=$!
-
-echo "tornet started with PID: $TORNET_PID"
-echo "You can stop it later with: pkill -9 $TORNET_PID if the process doesn't stop immediately"
-
-echo "Opening firefox as nonroot..."
-sudo -u "$SUDO_USER" firefox &
-
-read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
-
-killFirefox
-
-#sets proxy back to auto after closing
-cat > "$usrPath/user.js" <<EOF
-user_pref("network.proxy.type", 4);
-EOF
-echo "Firefox set back to normal..."
