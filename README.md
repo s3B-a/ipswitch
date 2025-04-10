@@ -18,8 +18,12 @@ IP SWITCHER UTILIZING TORNET
 - Changing the interval from 5 may slow your system down, anything lower than 3 and Tornet won't be able to catch up (this is due connecting too quickly to networks all around the globe)
 
 ### THIS SCRIPT IS A WORK IN PROGRESS
-- Not all browsers are supported at the time of editing the only browser this functions with is firefox.
+- Not all browsers are supported at the time of editing
 - More browsers will obtain this feature in the future
 
-### Why kill firefox?
-Killing firefox **is necessary to edit the proxy settings**. This is because you cannot edit the ```prefs.js``` file directly, as it gets overwritten by firefox when closed. The ```user.js``` file is there as a way for firefox to copy the user-controlled config and copy the settings into ```prefs.js```
+### Functioning browsers
+- Chromium
+- Firefox
+
+### Why kill the browser?
+Killing your browser **is necessary to edit the proxy settings**. In firefox, you cannot edit the ```prefs.js``` file directly, as it gets overwritten by firefox when closed. The ```user.js``` file is there as a way for firefox to copy the user-controlled config and copy the settings into ```prefs.js```. Chromium is simpler by allowing the user to launch Chromium with ```--proxy-server``` and a custom proxy attached.
