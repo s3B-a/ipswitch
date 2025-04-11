@@ -57,6 +57,16 @@ killChromium() {
 	fi
 }
 
+#Forcefully kills Brave Browser, check README.md for more information
+killBrave() {
+        if pgrep brave > /dev/null; then
+                echo "Killing Brave Browser..."
+                pkill -9 brave
+        else
+                echo "Brave lion became a house cat..."
+        fi
+}
+
 #Launches Chromium
 launchChromium() {
 	#Proxy to set on launch of chromium via --proxy-server
@@ -132,6 +142,24 @@ EOF
 	echo "Firefox set back to normal..."
 }
 
+#Launches Brave Browser
+launchBrave() {
+        #Proxy to set on launch of brave via --proxy-server
+        proxy=$(echo "127.0.0.1:9050")
+
+        killBrave
+
+        launchTornet
+
+        echo "Launching brave with proxy enabled..."
+        sudo -u "$SUDO_USER" brave-browser --proxy-server="socks5://$proxy" &
+
+        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+
+        killBrave
+}
+
+
 #Launches Tornet and begins IP shuffling
 launchTornet() {
 	echo "Launching tornet"
@@ -181,6 +209,9 @@ if [[ "$usrBrowser" == "chromium" ]]; then
 elif [[ "$usrBrowser" == "firefox" ]]; then
 	echo "Selected firefox..."
 	launchFirefox
+elif [[ "$usrBrowser" == "brave" || "$usrBrowser" == "brave-browser" || "$usrBrowser" == "brave browser" ]]; then
+	echo "Selected Brave Browser..."
+	launchBrave
 else
 	echo "no selected browser... quitting..."
 fi
