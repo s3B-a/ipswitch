@@ -2,7 +2,7 @@
 
 #Script created by s3B-a
 # ================
-# IP SWITCH v1.1.0
+# IP SWITCH v1.2.1
 # ================
 
 printAsciiLogo() {
@@ -13,7 +13,7 @@ printAsciiLogo() {
 	echo -e "\e[36m | ██║██╔═══╝     ╚════██║██║███╗██║██║   ██║   ██║     ██╔══██║ |"
 	echo -e "\e[36m | ██║██║         ███████║╚███╔███╔╝██║   ██║   ╚██████╗██║  ██║ |"
 	echo -e "\e[36m | ╚═╝╚═╝         ╚══════╝ ╚══╝╚══╝ ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ |"
-	echo -e "\e[36m +----------------------------(v1.1.0)---------------------------+\e[0m "
+	echo -e "\e[36m +----------------------------(v1.2.1)---------------------------+\e[0m "
 }
 
 #Finds the active firefox directory used by the user
@@ -26,6 +26,8 @@ findFirefoxProfile() {
 		return 1
 	fi
 
+	#Iterates through all the directories of firefox folder finding the default directory,
+	#This directory will contrain pref.js which is the same directory that houses user.js
 	for dir in "$pRoot"/*.default* "$pRoot"/*.esr*; do
 		if [ -f $dir/prefs.js ]; then
 			echo "$dir"
@@ -37,34 +39,31 @@ findFirefoxProfile() {
 	return 1
 }
 
-#Forcefully kills firefox, check README.md for more information
-killFirefox() {
-	if pgrep firefox > /dev/null; then
-		echo "Killing firefox..."
-		pkill -9 firefox
+killBrowser() {
+	local browser="$1"
+	if pgrep "$browser" > /dev/null; then
+		echo "Killing $browser..."
+		pkill -9 "$browser"
 	else
-		echo "That fox is already dead..."
+		echo "$browser isn't running!"
 	fi
 }
 
-#Forcefully kills chromium, check README.md for more information
-killChromium() {
-	if pgrep chromium > /dev/null; then
-		echo "Killing Chromium..."
-		pkill -9 chromium
-	else
-		echo "Chromium lost it's chrome choom"
-	fi
-}
+#Launches Brave Browser
+launchBrave() {
+        #Proxy to set on launch of brave via --proxy-server
+        proxy=$(echo "127.0.0.1:9050")
 
-#Forcefully kills Brave Browser, check README.md for more information
-killBrave() {
-        if pgrep brave > /dev/null; then
-                echo "Killing Brave Browser..."
-                pkill -9 brave
-        else
-                echo "Brave lion became a house cat..."
-        fi
+        killBrowser brave
+
+        launchTornet
+
+        echo "Launching brave with proxy enabled..."
+        sudo -u "$SUDO_USER" brave-browser --proxy-server="socks5://$proxy" &
+
+        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+
+        killBrowser brave
 }
 
 #Launches Chromium
@@ -72,7 +71,7 @@ launchChromium() {
 	#Proxy to set on launch of chromium via --proxy-server
 	proxy=$(echo "127.0.0.1:9050")
 
-	killChromium
+	killBrowser chromium
 
 	launchTornet
 
@@ -81,12 +80,12 @@ launchChromium() {
 
 	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
 
-	killChromium
+	killBrowser chromium
 }
 
 #Launches Firefox
 launchFirefox() {
-	killFirefox
+	killBrowser firefox
 
 	#Calling the findProfile method to find the active firefox directory
 	echo "Finding active directory..."
@@ -101,19 +100,10 @@ launchFirefox() {
 
 	#Determines proxy and changes to custom proxy when needed
 	fLine=$(head -n 1 "$usrPath/user.js")
-	if [["$fLine" == *'user_pref("network.proxy.type", 1);'* ]]; then
+	if [[ "$fLine" == *'user_pref("network.proxy.type", 1);'* ]]; then
 		echo "Proxy is type 1!"
-	elif [["$fLine" == *'user_pref("network.proxy.type", 4);' * ]]; then
-		echo "Proxy is type 4, changing user.js to type 1..."
-		cat > "$usrPath/user.js" <<EOF
-user_pref("network.proxy.type", 1);
-user_pref("network.proxy.socks", "127.0.0.1");
-user_pref("network.proxy.socks_port", 9050);
-user_pref("network.proxy.socks_version", 5);
-user_pref("network.proxy.socks_remote_dns", true);
-EOF
 	else
-		echo "Proxy is at an unknown type, defaulting to 1..."
+		echo "Defaulting Proxy to type 1..."
 		cat > "$usrPath/user.js" <<EOF
 user_pref("network.proxy.type", 1);
 user_pref("network.proxy.socks", "127.0.0.1");
@@ -133,36 +123,20 @@ EOF
 
 	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
 
-	killFirefox
+	killBrowser firefox
 
 	#Sets proxy back to auto after closing
 	cat > "$usrPath/user.js" <<EOF
 user_pref("network.proxy.type", 4);
 EOF
 	echo "Firefox set back to normal..."
+	echo "Returning user.js back to ipswitch dir..."
+	mv $usrPath/user.js .
 }
-
-#Launches Brave Browser
-launchBrave() {
-        #Proxy to set on launch of brave via --proxy-server
-        proxy=$(echo "127.0.0.1:9050")
-
-        killBrave
-
-        launchTornet
-
-        echo "Launching brave with proxy enabled..."
-        sudo -u "$SUDO_USER" brave-browser --proxy-server="socks5://$proxy" &
-
-        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
-
-        killBrave
-}
-
 
 #Launches Tornet and begins IP shuffling
 launchTornet() {
-	echo "Launching tornet"
+	echo "Launching tornet..."
 	tornet --interval 5 --count 0 &
 	TORNET_PID=$!
 
@@ -177,7 +151,7 @@ if [ "$EUID" -ne 0 ]; then
 	exit
 fi
 
-Installs Dependancies
+#Installs Dependancies
 echo "Checking if tor and tornet are installed..."
 apt install tor
 pip install tornet --break-system-packages
@@ -185,9 +159,8 @@ echo "Installed all dependancies"
 
 #Checks if required services are running
 echo "Checking tor status"
-torService="tor"
-if ! systemctl is-active $torService; then
-	echo "$torService isn't running, launching..."
+if ! systemctl is-active --quiet tor; then
+	echo "tor isn't running, launching..."
 	systemctl start tor
 	systemctl status tor
 else
