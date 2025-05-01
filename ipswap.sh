@@ -2,18 +2,35 @@
 
 #Script created by s3B-a
 # ================
-# IP SWITCH v1.2.1
+# IP SWITCH v1.3.0
 # ================
 
+#Color codes
+
+GREEN="\e[32m"
+CYAN="\e[36m"
+YELLOW="\e[33m"
+RED="\e[31m"
+RES="\e[0m"
+BOLD="\e[1m"
+
+
 printAsciiLogo() {
-	echo -e "\e[36m +---------------------------------------------------------------+\e"
-	echo -e "\e[36m | ██╗██████╗     ███████╗██╗    ██╗██╗████████╗ ██████╗██╗  ██╗ |"
- 	echo -e "\e[36m | ██║██╔══██╗    ██╔════╝██║    ██║██║╚══██╔══╝██╔════╝██║  ██║ |"
-	echo -e "\e[36m | ██║██████╔╝    ███████╗██║ █╗ ██║██║   ██║   ██║     ███████║ |"
-	echo -e "\e[36m | ██║██╔═══╝     ╚════██║██║███╗██║██║   ██║   ██║     ██╔══██║ |"
-	echo -e "\e[36m | ██║██║         ███████║╚███╔███╔╝██║   ██║   ╚██████╗██║  ██║ |"
-	echo -e "\e[36m | ╚═╝╚═╝         ╚══════╝ ╚══╝╚══╝ ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ |"
-	echo -e "\e[36m +----------------------------(v1.2.1)---------------------------+\e[0m "
+	echo -e "${CYAN} +---------------------------------------------------------------+"
+	echo -e "${CYAN} | ██╗██████╗     ███████╗██╗    ██╗██╗████████╗ ██████╗██╗  ██╗ |"
+ 	echo -e "${CYAN} | ██║██╔══██╗    ██╔════╝██║    ██║██║╚══██╔══╝██╔════╝██║  ██║ |"
+	echo -e "${CYAN} | ██║██████╔╝    ███████╗██║ █╗ ██║██║   ██║   ██║     ███████║ |"
+	echo -e "${CYAN} | ██║██╔═══╝     ╚════██║██║███╗██║██║   ██║   ██║     ██╔══██║ |"
+	echo -e "${CYAN} | ██║██║         ███████║╚███╔███╔╝██║   ██║   ╚██████╗██║  ██║ |"
+	echo -e "${CYAN} | ╚═╝╚═╝         ╚══════╝ ╚══╝╚══╝ ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ |"
+	echo -e "${CYAN} +----------------------------(v1.3.0)---------------------------+${RES}"
+}
+
+#Logs messages with color
+log() {
+	local color=$1
+	local message=$2
+	echo -e "${color}${message}${RES}"
 }
 
 #Finds the active firefox directory used by the user
@@ -22,7 +39,7 @@ findFirefoxProfile() {
 	pRoot="$usrHome/.mozilla/firefox"
 
 	if [ ! -d "$pRoot" ]; then
-		echo "Firefox directory not found! aborting..."
+		log "${RED}" "Firefox directory not found! aborting..."
 		return 1
 	fi
 
@@ -35,17 +52,17 @@ findFirefoxProfile() {
 		fi
 	done
 
-	echo "No profile with prefs.js found..."
+	log "${RED}" "No profile with prefs.js found..."
 	return 1
 }
 
 killBrowser() {
 	local browser="$1"
 	if pgrep "$browser" > /dev/null; then
-		echo "Killing $browser..."
+		log "${GREEN}" "Killing $browser..."
 		pkill -9 "$browser"
 	else
-		echo "$browser isn't running!"
+		log "${YELLOW}" "$browser isn't running!"
 	fi
 }
 
@@ -58,8 +75,11 @@ launchBrave() {
 
         launchTornet
 
-        echo "Launching brave with proxy enabled..."
-        sudo -u "$SUDO_USER" brave-browser --proxy-server="socks5://$proxy" &
+        log "${GREEN}" "Launching brave with proxy enabled..."
+        sudo -u "$SUDO_USER" brave-browser --proxy-server="socks5://$proxy" \
+	--host-resolver-rules="MAP *.google.com 0.0.0.0" \
+	--disable-features=NetworkService,PreloadNetworkHints,NetworkPrediction,BrowserCaptivePortalDetection \
+	--proxy-bypass-list="<-loopback>" &
 
         read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
 
@@ -75,8 +95,11 @@ launchChromium() {
 
 	launchTornet
 
-	echo "Launching chromium with proxy enabled..."
-	sudo -u "$SUDO_USER" chromium --proxy-server="socks5://$proxy" &
+	log "${GREEN}" "Launching chromium with proxy enabled..."
+	sudo -u "$SUDO_USER" chromium --proxy-server="socks5://$proxy" \
+	--host-resolver-rules="MAP *.google.com 0.0.0.0" \
+	--disable-features=NetworkService,PreloadNetworkHints,NetworkPrediction,BrowserCaptivePortalDetection \
+	--proxy-bypass-list="<-loopback>" &
 
 	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
 
@@ -88,14 +111,19 @@ launchFirefox() {
 	killBrowser firefox
 
 	#Calling the findProfile method to find the active firefox directory
-	echo "Finding active directory..."
+	log "${YELLOW}" "Finding active directory..."
 	usrPath=$(findFirefoxProfile)
+
+	if [ -z "$usrPath" ]; then
+		log "${RED}" "Failed to find Firefox profile!"
+		return 1
+	fi
 
 	#Checks if user.js got moved to ideal path
 	if [ -f "user.js" ]; then
 		mv ./user.js $usrPath
 	else
-		echo "user.js is already in $usrPath"
+		log "${YELLOW}" "user.js is already in $usrPath"
 	fi
 
 	#Determines proxy and changes to custom proxy when needed
@@ -110,15 +138,21 @@ user_pref("network.proxy.socks", "127.0.0.1");
 user_pref("network.proxy.socks_port", 9050);
 user_pref("network.proxy.socks_version", 5);
 user_pref("network.proxy.socks_remote_dns", true);
+user_pref("network.trr.mode", 5);
+user_pref("network.dns.disablePrefetch", true);
+user_pref("network.predictor.enabled", false);
+user_pref("network.captive-portal-service.enabled", false);
 EOF
 	fi
 
 	#Removing conflicting proxy settings
 	sed -i '/network\.proxy\./d' "$usrPath/prefs.js"
+	sed -i '/network\.trr\./d' "$usrPath/prefs.js"
+	sed -i '/network\.dns\./d' "$usrPath/prefs.js"
 
 	launchTornet
 
-	echo "Opening firefox as nonroot..."
+	log "${GREEN}" "Opening firefox as nonroot..."
 	sudo -u "$SUDO_USER" firefox &
 
 	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
@@ -129,19 +163,100 @@ EOF
 	cat > "$usrPath/user.js" <<EOF
 user_pref("network.proxy.type", 4);
 EOF
-	echo "Firefox set back to normal..."
-	echo "Returning user.js back to ipswitch dir..."
+
+	log "${GREEN}" "Firefox set back to normal..."
+	log "${GREEN}" "Returning user.js back to ipswitch dir..."
 	mv $usrPath/user.js .
+}
+
+#Launches Google Chrome
+launchGoogle() {
+	#Proxy to set on launch of google chrome via --proxy-server
+        proxy=$(echo "127.0.0.1:9050")
+
+        killBrowser chrome
+
+        launchTornet
+
+        log "${GREEN}" "Launching google chrome with proxy enabled..."
+
+	sudo -u "$SUDO_USER" google-chrome --proxy-server="socks5://$proxy" \
+	--host-resolver-rules="MAP *.onion 127.0.0.1" \
+	--disable-features=NetworkService,PreloadNetworkHints,NetworkPrediction,BrowserCaptivePortalDetection,HappinessTrackingSurveysForDesktop,HappinessTrackingSystem \
+	--enable-features=DoNotTrackByDefault \
+	--proxy-bypass-list="<-loopback>" \
+	--disable-sync \
+	--disable-background-networking \
+	--disable-breakpad \
+	--disable-default-apps \
+	--disable-component-update \
+	--disable-domain-reliability \
+	--disable-client-side-phishing-detection \
+	--disable-suggestions-service \
+	--disable-translate \
+	--no-default-browser-check \
+	--no-first-run \
+	--no-pings \
+	--no-service-autorun \
+	--no-experiments \
+	--no-report-upload \
+	--disable-google-help-tracking &
+
+        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+
+        killBrowser chrome
 }
 
 #Launches Tornet and begins IP shuffling
 launchTornet() {
-	echo "Launching tornet..."
+	log "${GREEN}" "Setting up DNS protection..."
+
+	if [ -f "./blockgoogledns.py" ]; then
+		log "${YELLOW}" "Stopping any existing DNS blockers..."
+		./blockgoogledns.py stop
+		sleep 1
+	fi
+
+	if ! systemctl is-active --quiet tor; then
+		log "${YELLOW}" "Tor service is not running, starting now..."
+		systemctl start tor
+		sleep 2
+		if ! systemctl is-active --quiet tor; then
+			log "${RED}" "Failed to start Tor service! Exiting..."
+			exit 1
+		fi
+		log "${GREEN}" "Tor service started!"
+	fi
+
+	#Block chrome DNS servers
+	log "${CYAN}" "Stopping the corpos from stealing your data..."
+	if [ -f "./blockgoogledns.py" ]; then
+		chmod +x blockgoogledns.py
+		./blockgoogledns.py monitor &
+		DNSBLOCKERPID=$!
+
+		sleep 2
+
+		if ! ps -p "$DNSBLOCKERPID" > /dev/null; then
+			log "${RED}" "DNS blocker failed to start!"
+		fi
+	else
+		log "${RED}" "Warning: blockgoogledns.py not found. Data may leak to the corpos."
+		return 1
+	fi
+
+	log "${GREEN}" "Launching tornet..."
 	tornet --interval 5 --count 0 &
 	TORNET_PID=$!
 
-	echo "tornet started with PID: $TORNET_PID"
-	echo "You can stop it later with: pkill -9 $TORNET_PID if the process doesn't stop immediately"
+	sleep 2
+	if ps -p "$TORNET_PID" > /dev/null; then
+		log "${GREEN}" "tornet started with PID: $TORNET_PID"
+		log "${GREEN}" "IP rotation is active!"
+	else
+		log "${RED}" "IP rotation failed to start! check if tornet is properly installed."
+		return 1
+	fi
 }
 
 #Asks for root perms
@@ -152,24 +267,67 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 #Installs Dependancies
-echo "Checking if tor and tornet are installed..."
+log "${YELLOW}" "Checking if tor and tornet are installed..."
 apt install tor
 pip install tornet --break-system-packages
-echo "Installed all dependancies"
+log "${GREEN}" "Installed all dependancies"
 
 #Checks if required services are running
-echo "Checking tor status"
+log "${YELLOW}" "Checking tor status"
 if ! systemctl is-active --quiet tor; then
-	echo "tor isn't running, launching..."
+	log "${YELLOW}" "tor isn't running, launching..."
 	systemctl start tor
 	systemctl status tor
 else
-	echo "$torService is running!"
+	log "${GREEN}" "Tor is running!"
+fi
+
+#Checks torrc file for specific lines for DNS compatibility
+log "${YELLOW}" "Checking if Tor cfg is configured properly..."
+dnsExists=$(grep -c "^DNSPort 9053$" /etc/tor/torrc)
+automapExists=$(grep -c "^AutomapHostsOnResolve 1$" /etc/tor/torrc)
+if [ $dnsExists -eq 0 ] || [ $automapExists -eq 0 ]; then
+	touch /tmp/torrc_additions
+
+	if [ $dnsExists -eq 0 ]; then
+		echo "DNSPort 9053" >> /tmp/torrc_additions
+	fi
+
+	if [ $automapExists -eq 0 ]; then
+		echo "AutomapHostsOnResolve 1" >> /tmp/torrc_additions
+	fi
+
+	cat /tmp/torrc_additions >> /etc/tor/torrc
+
+	rm -f /tmmp/torrc_additions
+
+	log "${GREEN}" "Tor cfg updated!"
+
+	log "${YELLOW}" "Restartionig Tor to apply new cfg..."
+	systemctl restart tor
+	sleep 2
+
+	if ! systemctl is-active --quiet tor; then
+		log "${RED}" "Failed to restart Tor! check cfg..."
+		exit 1
+	else
+		log "${GREEN}" "Tor restarted successfully!"
+	fi
+else
+	log "${GREEN}" "All cfg already exists in torrc"
+fi
+
+#Checks for blockgoogledns.py script
+if [ ! -f "blockgoogledns.py" ]; then
+	log "${RED}" "ERROR: blockgoogledns.py is NOT in the current dirrectory."
+	log "${RED}" "Please make sure the entire repo is installed and the script is in the same directory as ipswap.sh"
+	exit 1
 fi
 
 printAsciiLogo
 
 #Determine browser
+log "${CYAN}" "Available browsers: firefox, chromium, brave, chrome/google"
 echo "Enter your browser: "
 read -r usrBrowser
 
@@ -185,6 +343,10 @@ elif [[ "$usrBrowser" == "firefox" ]]; then
 elif [[ "$usrBrowser" == "brave" || "$usrBrowser" == "brave-browser" || "$usrBrowser" == "brave browser" ]]; then
 	echo "Selected Brave Browser..."
 	launchBrave
+elif [[ "$usrBrowser" == "chrome" || "$usrBrowser" == "google" || "$usrBrowser" == "google chrome" ]]; then
+	echo "Selected Google Chrome..."
+	launchGoogle
 else
 	echo "no selected browser... quitting..."
+	exit 1
 fi
