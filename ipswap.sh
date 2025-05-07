@@ -2,7 +2,7 @@
 
 #Script created by s3B-a
 # ================
-# IP SWITCH v1.3.0
+# IP SWITCH v1.3.1
 # ================
 
 #Color codes
@@ -23,7 +23,7 @@ printAsciiLogo() {
 	echo -e "${CYAN} | ██║██╔═══╝     ╚════██║██║███╗██║██║   ██║   ██║     ██╔══██║ |"
 	echo -e "${CYAN} | ██║██║         ███████║╚███╔███╔╝██║   ██║   ╚██████╗██║  ██║ |"
 	echo -e "${CYAN} | ╚═╝╚═╝         ╚══════╝ ╚══╝╚══╝ ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝ |"
-	echo -e "${CYAN} +----------------------------(v1.3.0)---------------------------+${RES}"
+	echo -e "${CYAN} +----------------------------(v1.3.1)---------------------------+${RES}"
 }
 
 #Logs messages with color
@@ -81,7 +81,8 @@ launchBrave() {
 	--disable-features=NetworkService,PreloadNetworkHints,NetworkPrediction,BrowserCaptivePortalDetection \
 	--proxy-bypass-list="<-loopback>" &
 
-        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+	echo -e "Press **Enter** to exit the script and automatically kill IP shuffler\n"
+        read leave
 
         killBrowser brave
 }
@@ -101,7 +102,8 @@ launchChromium() {
 	--disable-features=NetworkService,PreloadNetworkHints,NetworkPrediction,BrowserCaptivePortalDetection \
 	--proxy-bypass-list="<-loopback>" &
 
-	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+	echo -e "Press **Enter** to exit the script and automatically kill IP shuffler\n"
+        read leave
 
 	killBrowser chromium
 }
@@ -155,7 +157,8 @@ EOF
 	log "${GREEN}" "Opening firefox as nonroot..."
 	sudo -u "$SUDO_USER" firefox &
 
-	read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+	echo -e "Press **Enter** to exit the script and automatically kill IP shuffler\n"
+        read leave
 
 	killBrowser firefox
 
@@ -202,7 +205,8 @@ launchGoogle() {
 	--no-report-upload \
 	--disable-google-help-tracking &
 
-        read -p "Press **Enter** to exit the script and automatically kill IP shuffler"
+        echo -e "Press **Enter** to exit the script and automatically kill IP shuffler\n"
+        read leave
 
         killBrowser chrome
 }
@@ -211,12 +215,14 @@ launchGoogle() {
 launchTornet() {
 	log "${GREEN}" "Setting up DNS protection..."
 
+	#Launch DNS blocking for google... corpo scums...
 	if [ -f "./blockgoogledns.py" ]; then
 		log "${YELLOW}" "Stopping any existing DNS blockers..."
 		./blockgoogledns.py stop
 		sleep 1
 	fi
 
+	#Double check tor is active before running tornet
 	if ! systemctl is-active --quiet tor; then
 		log "${YELLOW}" "Tor service is not running, starting now..."
 		systemctl start tor
@@ -272,6 +278,13 @@ apt install tor
 pip install tornet --break-system-packages
 log "${GREEN}" "Installed all dependancies"
 
+#Quickly deactivates tor if it was previously running
+if systemctl is-active --quiet tor; then
+	log "${YELLOW}" "Exiting tor to reset connection..."
+	systemctl stop tor
+	systemctl status tor
+fi
+
 #Checks if required services are running
 log "${YELLOW}" "Checking tor status"
 if ! systemctl is-active --quiet tor; then
@@ -299,7 +312,7 @@ if [ $dnsExists -eq 0 ] || [ $automapExists -eq 0 ]; then
 
 	cat /tmp/torrc_additions >> /etc/tor/torrc
 
-	rm -f /tmmp/torrc_additions
+	rm -f /tmp/torrc_additions
 
 	log "${GREEN}" "Tor cfg updated!"
 
@@ -348,5 +361,8 @@ elif [[ "$usrBrowser" == "chrome" || "$usrBrowser" == "google" || "$usrBrowser" 
 	launchGoogle
 else
 	echo "no selected browser... quitting..."
+	if systemctl is-active --quiet tor; then
+		systemctl stop tor
+	fi
 	exit 1
 fi

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# Script created by s3B-a
+# =======================
+# Google DNS Block v1.3.1
+# =======================
+
 import logging
 import os
 import re
@@ -22,6 +27,7 @@ def checkRoot():
 		sys.exit(1)
 
 # Commented out since need to connect to some google domains (if using chrome, google.com)
+# May be used in the future..?
 # Gets the IP of a domain
 # def getDomainIP(domain):
 #	try:
@@ -71,19 +77,39 @@ def block():
 
 	endBlock()
 
+	# Quick check to see if theres an active browser
 	bUID = getBrowserUID()
 	if not bUID:
 		logger.warning("\033[1;33mWARNING: No browser processes found, applying system-wide blocking...\033[0m")
 
 	googleDNS = ["8.8.8.8", "8.8.4.4"]
-	googleDNSranges = ["8.8.8.0/24", "8.8.4.0/24", "8.34.208.0/20", "8.35.192.0/20",
-	"23.236.48.0/20", "35.190.0.0/17", "64.233.160.0/19", "66.102.0.0/20", "66.249.80.0/20",
-	"72.14.192.0/18", "74.125.0.0/16", "108.177.8.0/21", "172.217.0.0/16", "172.253.0.0/16",
-	"173.194.0.0/16", "209.85.128.0/17", "216.58.192.0/19", "216.239.32.0/19",
-	"34.96.0.0/16", "34.98.0.0/16", "216.73.80.0/20", "142.250.0.0/15", "162.216.148.0/22",
-	"192.178.0.0/15", "199.36.154.0/23", "199.36.156.0/24", "199.192.112.0/22",
-	"199.223.232.0/21", "207.223.160.0/20", "208.68.108.0/22", "208.81.188.0/22",
-	"209.107.176.0/20", "172.217.34.0/24", "172.217.33.0/24"]
+	googleDNSranges = [
+		"8.8.8.0/24", "8.8.4.0/24", "8.34.208.0/20", "8.35.192.0/20",
+		"23.236.48.0/20", "23.251.128.0/19", "34.0.0.0/15", "34.2.0.0/16",
+		"34.3.0.0/23", "34.3.3.0/24", "34.3.4.0/24", "34.3.8.0/21",
+		"34.3.16.0/20", "34.3.32.0/19", "34.3.64.0/18", "34.4.0.0/14",
+		"34.8.0.0/13", "34.16.0.0/12", "34.32.0.0/11", "34.64.0.0/10",
+		"34.96.0.0/16", "34.98.0.0/16", "34.128.0.0/10", "35.184.0.0/13",
+		"35.190.0.0/17", "35.192.0.0/14", "35.196.0.0/15", "35.198.0.0/16",
+		"35.199.0.0/17", "35.199.128.0/18", "35.200.0.0/13", "35.208.0.0/12",
+		"35.224.0.0/12", "35.240.0.0/13", "57.140.192.0/18", "64.15.112.0/20",
+		"64.233.160.0/19", "66.22.228.0/23", "66.102.0.0/20", "66.249.64.0/19",
+		"66.249.80.0/20", "70.32.128.0/19", "72.14.192.0/18", "74.114.24.0/21",
+		"74.125.0.0/16", "104.154.0.0/15", "104.196.0.0/14", "104.237.160.0/19",
+		"107.167.160.0/19", "107.178.192.0/18", "108.59.80.0/20", "108.170.192.0/18",
+		"108.177.0.0/17", "108.177.8.0/21", "130.211.0.0/16", "136.22.160.0/20",
+		"136.22.176.0/21", "136.22.184.0/23", "136.22.186.0/24", "136.124.0.0/15",
+		"142.250.0.0/15", "146.148.0.0/17", "152.65.208.0/22", "152.65.214.0/23",
+		"152.65.218.0/23", "152.65.222.0/23", "152.65.224.0/19", "162.120.128.0/17",
+		"162.216.148.0/22", "162.222.176.0/21", "172.110.32.0/21", "172.217.33.0/16",
+		"172.217.34.0/16", "172.217.40.0/16", "172.253.1.0/16", "172.253.0.0/16",
+		"173.194.170.0/16", "173.255.112.0/20", "192.104.160.0/23", "192.158.28.0/22",
+		"192.178.0.0/24", "193.186.4.0/24", "199.36.154.0/23", "199.36.156.0/24",
+		"199.192.112.0/22", "199.223.232.0/21", "207.223.160.0/20", "208.65.152.0/22",
+		"208.68.108.0/22", "208.81.188.0/22", "208.117.224.0/19", "209.85.128.0/17",
+		"209.107.176.0/20", "216.58.192.0/19", "216.73.80.0/20", "216.239.32.0/19",
+		"216.252.220.0/22"
+	]
 
 	try:
 		subprocess.run(["iptables", "-t", "nat", "-A", "OUTPUT", "-p", "udp", "--dport", "53", "-j", "REDIRECT", "--to-ports", "9053"])
@@ -123,7 +149,7 @@ def block():
 	logger.info("\033[1;32mGoogle DNS blocking rules applied successfully\033[0m")
 	return True
 
-# Removes blocking for google DNS servers
+# Removes blocking for google servers
 def endBlock():
 	logger.info("\033[1;32mRemoving DNS blocking rules...\033[0m")
 
@@ -147,7 +173,7 @@ def endBlock():
 		logger.error(f"\033[1;31mError cleaning NAT table: {e}\033[0m")
 
 
-	googleIdentifiers = ["8.8.8", "8.8.4", "google", "dns"]
+	googleIdentifiers = ["8.8.8.8", "8.8.4.4", "google", "dns"]
 
 	try:
 		rules = subprocess.check_output(["iptables-save"]).decode('utf-8').split('\n')
@@ -192,17 +218,17 @@ def showStatus():
 		subprocess.run(["iptables", "-L", "OUTPUT", "-v"])
 		subprocess.run(["iptables", "-t", "nat", "-L", "OUTPUT", "-v"])
 
-		natOutput = subprocess.check_output(["iptables", "-t", "nat", "-L", "OUTPUT", "-v"]).decode('utf-8')
+		natOutput = subprocess.check_output(["iptables-save", "-t", "nat"]).decode('utf-8')
 		if "--to-ports 9053" in natOutput:
 			logger.info("\033[1;32mDNS redirection to Tor is ACTIVE\033[0m")
 		else:
-			logger.warning("\033[1;33mDNS redirection to Tor is NOT ACTIVE\033[0m")
+			logger.warning("\033[1;31mDNS redirection to Tor is NOT ACTIVE\033[0m")
 
 		output = subprocess.check_output(["iptables", "-L", "OUTPUT", "-v"]).decode('utf-8')
 		if "8.8.8.8" in output or "8.8.4.4" in output:
 			logger.info("\033[1;32mGoogle DNS blocking is ACTIVE\033[0m")
 		else:
-			logger.warning("\033[1;33mGoogle DNS blocking is NOT ACTIVE\033[0m")
+			logger.warning("\033[1;31mGoogle DNS blocking is NOT ACTIVE\033[0m")
 	except Exception as e:
         	logger.error(f"\033[1;31mError displaying status: {e}\033[0m")
 
@@ -243,6 +269,7 @@ def signal_handler(sig, frame):
 	endBlock()
 	sys.exit(0)
 
+# Monitors blocking rules and connections
 def monitor():
 	logger.info("\033[1;32mStarting Google DNS block monitoring mode...\033[0m")
 
@@ -267,18 +294,21 @@ def monitor():
 			currentTime = time.time()
 
 			if currentTime - lastCheck >= checkInterval:
-				natOutput = subprocess.check_output(["iptables", "-t", "nat", "-L", "OUTPUT", "-v"]).decode('utf-8')
+
+				# natOutput live check
+				natOutput = subprocess.check_output(["iptables-save", "-t", "nat"]).decode('utf-8')
 				if "--to-ports 9053" not in natOutput:
-					logger.warning("\033[1;33mDNS redirection rules are missing... reapplying...\033[0m")
+					logger.warning("\033[1;33mDNS redirection rules are missing or unapplied... reapplying...\033[0m")
 					try:
 						subprocess.run(["iptables", "-t", "nat", "-A", "OUTPUT", "-p", "udp", "--dport", "53", "-j", "REDIRECT", "--to-ports", "9053"])
 						subprocess.run(["iptables", "-t", "nat", "-A", "OUTPUT", "-p", "tcp", "--dport", "53", "-j", "REDIRECT", "--to-ports", "9053"])
 					except Exception as e:
 						logger.error(f"\033[1;31mError setting up DNS redirection rules: {e}\033[0m")
 
+				# GoogleDNS output live check
 				output = subprocess.check_output(["iptables", "-L", "OUTPUT", "-v"]).decode('utf-8')
 				if "8.8.8.8" not in output or "8.8.4.4" not in output:
-					logger.warning("\033[1;33mGoogle DNS blocking rules are missing... reapplying...\033[0m")
+					logger.warning("\033[1;33mGoogle DNS blocking rules are missing or unapplied... reapplying...\033[0m")
 					for dns in ["8.8.8.8","8.8.4.4"]:
 						try:
 							subprocess.run(["iptables", "-A", "OUTPUT", "-d", dns, "-j", "DROP"])
@@ -288,7 +318,6 @@ def monitor():
 				lastCheck = currentTime
 
 			newUID = set(str(uid) for uid in getBrowserUID())
-
 			for uid in newUID - knownUID:
 				logger.info(f"\033[1;32mNew browser process detected with UID {uid}. Adding rules...\033[0m")
 				for dns in ["8.8.8.8", "8.8.4.4"]:
